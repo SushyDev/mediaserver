@@ -1,0 +1,128 @@
+version: '3'
+
+services:
+  zurg:
+    container_name: zurg
+    image: ghcr.io/debridmediamanager/zurg-testing:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./zurg.yml:/app/config.yml
+      - zurgdata:/app/data
+
+  plex:
+    container_name: plex
+    image: ghcr.io/hotio/plex:latest
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - zurg
+    environment:
+      - TZ=Europe/Amsterdam
+    volumes:
+      - ~/.config/plex/database:/config
+      - ~/.config/plex/transcode:/transcode
+      - zurgmount:/mnt/zurg:shared
+      - radarr:/mnt/radarr
+      - sonarr:/mnt/sonarr
+    healthcheck:
+      test: curl --connect-timeout 15 --silent --show-error --fail http://localhost:32400/identity
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Amsterdam
+    volumes:
+      - ~/.config/prowlarr/config:/config
+
+  sonarr:
+    container_name: sonarr
+    image: ghcr.io/hotio/sonarr:latest
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - plex
+      - prowlarr
+    environment:
+      - TZ=Europe/Amsterdam
+      - PUID=0
+      - PGID=0
+    volumes:
+      - ~/.config/sonarr/config:/config
+      - zurgmount:/mnt/zurg:shared
+      - sonarr:/mnt/sonarr
+      - scripts:/mnt/scripts
+
+  radarr:
+    container_name: radarr
+    image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - plex
+      - prowlarr
+    environment:
+      - TZ=Europe/Amsterdam
+      - PUID=0
+      - PGID=0
+    volumes:
+      - ~/.config/radarr/config:/config
+      - zurgmount:/mnt/zurg:shared
+      - radarr:/mnt/radarr
+      - scripts:/mnt/scripts
+
+  overseerr:
+    container_name: overseerr
+    image: ghcr.io/hotio/overseerr:latest
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - plex
+      - sonarr
+      - radarr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=Europe/Amsterdam
+      - PORT=5055
+    volumes:
+      - ~/.config/overseerr/config:/app/config
+
+  qdebrid:
+    container_name: qdebrid
+    image: ghcr.io/sushydev/qdebrid:main
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - zurg
+      - sonarr
+      - radarr
+    volumes:
+      - ./qdebrid.yml:/app/config.yml
+
+  scripts:
+    container_name: scripts
+    image: ghcr.io/sushydev/qdebrid-scripts:main
+    volumes:
+      - scripts:/mnt/scripts
+
+volumes:
+  scripts:
+  radarr:
+  sonarr:
+  zurgdata:
+  zurgmount:
+    driver: rclone
+    driver_opts:
+      remote: "zurg:"
+      allow_non_empty: "true"
+      allow_other: "true"
+      uid: "1000"
+      gid: "1000"
+      read_only: "true"
