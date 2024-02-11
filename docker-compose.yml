@@ -22,7 +22,7 @@ services:
     volumes:
       - ~/.config/plex/database:/config
       - ~/.config/plex/transcode:/transcode
-      - zurgmount:/mnt/zurg:rshared
+      - zurg:/mnt/zurg
       - radarr:/mnt/radarr
       - sonarr:/mnt/sonarr
     healthcheck:
@@ -52,11 +52,9 @@ services:
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
-      - PUID=0
-      - PGID=0
     volumes:
       - ~/.config/sonarr/config:/config
-      - zurgmount:/mnt/zurg:rshared
+      - zurg:/mnt/zurg
       - sonarr:/mnt/sonarr
       - scripts:/mnt/scripts
 
@@ -70,11 +68,9 @@ services:
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
-      - PUID=0
-      - PGID=0
     volumes:
       - ~/.config/radarr/config:/config
-      - zurgmount:/mnt/zurg:rshared
+      - zurg:/mnt/zurg
       - radarr:/mnt/radarr
       - scripts:/mnt/scripts
 
@@ -105,19 +101,29 @@ services:
       - radarr
     volumes:
       - ./qdebrid.yml:/app/config.yml
-
-  scripts:
-    container_name: scripts
-    image: ghcr.io/sushydev/qdebrid-scripts:main
-    volumes:
       - scripts:/mnt/scripts
 
 volumes:
-  scripts:
-  radarr:
-  sonarr:
   zurgdata:
-  zurgmount:
+  scripts:
+    driver: local
+    driver_opts:
+      device: tmpfs
+      type: tmpfs
+      o: uid=1000,gid=1000
+  radarr:
+    driver: local
+    driver_opts:
+      device: tmpfs
+      type: tmpfs
+      o: uid=1000,gid=1000
+  sonarr:
+    driver: local
+    driver_opts:
+      device: tmpfs
+      type: tmpfs
+      o: uid=1000,gid=1000
+  zurg:
     driver: rclone
     driver_opts:
       remote: "zurg:"
@@ -125,4 +131,5 @@ volumes:
       allow_other: "true"
       uid: "1000"
       gid: "1000"
-      read_only: "true"
+      vfs_cache_mode: "full"
+      dir_cache_time: "10s"
