@@ -22,7 +22,7 @@ services:
     volumes:
       - ~/.config/plex/database:/config
       - ~/.config/plex/transcode:/transcode
-      - zurgmount:/mnt/zurg:shared
+      - zurgmount:/mnt/zurg:rshared
       - radarr:/mnt/radarr
       - sonarr:/mnt/sonarr
     healthcheck:
@@ -56,7 +56,7 @@ services:
       - PGID=0
     volumes:
       - ~/.config/sonarr/config:/config
-      - zurgmount:/mnt/zurg:shared
+      - zurgmount:/mnt/zurg:rshared
       - sonarr:/mnt/sonarr
       - scripts:/mnt/scripts
 
@@ -74,7 +74,7 @@ services:
       - PGID=0
     volumes:
       - ~/.config/radarr/config:/config
-      - zurgmount:/mnt/zurg:shared
+      - zurgmount:/mnt/zurg:rshared
       - radarr:/mnt/radarr
       - scripts:/mnt/scripts
 
