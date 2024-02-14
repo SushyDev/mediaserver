@@ -23,8 +23,8 @@ services:
       - ~/.config/plex/database:/config
       - ~/.config/plex/transcode:/transcode
       - zurg:/mnt/zurg
-      - radarr:/mnt/radarr
-      - sonarr:/mnt/sonarr
+      - ~/.config/radarr/media:/mnt/radarr
+      - ~/.config/sonarr/media:/mnt/sonarr
     healthcheck:
       test: curl --connect-timeout 15 --silent --show-error --fail http://localhost:32400/identity
       interval: 1m00s
@@ -54,8 +54,8 @@ services:
       - TZ=Europe/Amsterdam
     volumes:
       - ~/.config/sonarr/config:/config
+      - ~/.config/sonarr/media:/mnt/sonarr
       - zurg:/mnt/zurg
-      - sonarr:/mnt/sonarr
       - scripts:/mnt/scripts
 
   radarr:
@@ -70,8 +70,8 @@ services:
       - TZ=Europe/Amsterdam
     volumes:
       - ~/.config/radarr/config:/config
+      - ~/.config/radarr/media:/mnt/radarr
       - zurg:/mnt/zurg
-      - radarr:/mnt/radarr
       - scripts:/mnt/scripts
 
   overseerr:
@@ -106,23 +106,6 @@ services:
 volumes:
   zurgdata:
   scripts:
-    driver: local
-    driver_opts:
-      device: tmpfs
-      type: tmpfs
-      o: uid=1000,gid=1000
-  radarr:
-    driver: local
-    driver_opts:
-      device: tmpfs
-      type: tmpfs
-      o: uid=1000,gid=1000
-  sonarr:
-    driver: local
-    driver_opts:
-      device: tmpfs
-      type: tmpfs
-      o: uid=1000,gid=1000
   zurg:
     driver: rclone
     driver_opts:
