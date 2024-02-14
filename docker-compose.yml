@@ -114,5 +114,7 @@ volumes:
       allow_other: "true"
       uid: "1000"
       gid: "1000"
-      vfs_cache_mode: "full"
+      vfs_cache_mode: "writes"
+      vfs_read_chunk_size: "2G"
       dir_cache_time: "10s"
+      poll_interval: "15s"

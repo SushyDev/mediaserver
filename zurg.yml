@@ -6,3 +6,5 @@ token: "${REAL_DEBRID_TOKEN}"
 # File handling and renaming settings
 retain_rd_torrent_name: true
 retain_folder_name_extension: true
+
+network_buffer_size: 16384
