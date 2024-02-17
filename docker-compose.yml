@@ -1,32 +1,46 @@
 version: '3'
 
 services:
+  qdebrid:
+    container_name: qdebrid
+    image: ghcr.io/sushydev/qdebrid:main
+    restart: unless-stopped
+    volumes:
+      - ./qdebrid.yml:/app/config.yml
+      - scripts:/mnt/scripts
+
   zurg:
     container_name: zurg
     image: ghcr.io/debridmediamanager/zurg-testing:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "9999:${ZURG_PORT}"
     volumes:
       - ./zurg.yml:/app/config.yml
       - zurgdata:/app/data
+    healthcheck:
+      test: curl --silent --show-error --fail localhost:9999/dav/version.txt
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
 
   plex:
     container_name: plex
     image: ghcr.io/hotio/plex:latest
     restart: unless-stopped
-    network_mode: host
-    depends_on:
-      - zurg
+    ports:
+      - "32400:${PLEX_PORT}"
     environment:
       - TZ=Europe/Amsterdam
     volumes:
       - ~/.config/plex/database:/config
       - ~/.config/plex/transcode:/transcode
-      - zurg:/mnt/zurg
       - ~/.config/radarr/media:/mnt/radarr
       - ~/.config/sonarr/media:/mnt/sonarr
+      - zurg:/mnt/zurg
     healthcheck:
-      test: curl --connect-timeout 15 --silent --show-error --fail http://localhost:32400/identity
+      test: curl --silent --show-error --fail http://localhost:32400/identity
       interval: 1m00s
       timeout: 15s
       retries: 3
@@ -36,7 +50,8 @@ services:
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "9696:${PROWLARR_PORT}"
     environment:
       - TZ=Europe/Amsterdam
     volumes:
@@ -46,7 +61,8 @@ services:
     container_name: sonarr
     image: ghcr.io/hotio/sonarr:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "8989:${SONARR_PORT}"
     depends_on:
       - plex
       - prowlarr
@@ -62,7 +78,8 @@ services:
     container_name: radarr
     image: ghcr.io/hotio/radarr:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "7878:${RADARR_PORT}"
     depends_on:
       - plex
       - prowlarr
@@ -78,30 +95,16 @@ services:
     container_name: overseerr
     image: ghcr.io/hotio/overseerr:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "5055:${OVERSEERR_PORT}"
     depends_on:
       - plex
       - sonarr
       - radarr
     environment:
-      - LOG_LEVEL=info
       - TZ=Europe/Amsterdam
-      - PORT=5055
     volumes:
       - ~/.config/overseerr/config:/app/config
-
-  qdebrid:
-    container_name: qdebrid
-    image: ghcr.io/sushydev/qdebrid:main
-    restart: unless-stopped
-    network_mode: host
-    depends_on:
-      - zurg
-      - sonarr
-      - radarr
-    volumes:
-      - ./qdebrid.yml:/app/config.yml
-      - scripts:/mnt/scripts
 
 volumes:
   zurgdata:
@@ -109,12 +112,15 @@ volumes:
   zurg:
     driver: rclone
     driver_opts:
-      remote: "zurg:"
+      type: "webdav"
+      webdav_url: "http://localhost:${ZURG_PORT}/dav"
+      webdav_vendor: "other"
+      webdav_pacer_min_sleep: "0"
       allow_non_empty: "true"
       allow_other: "true"
       uid: "1000"
       gid: "1000"
       vfs_cache_mode: "writes"
       vfs_read_chunk_size: "2G"
-      dir_cache_time: "10s"
-      poll_interval: "15s"
+      dir_cache_time: "15s"
+      poll_interval: "10s"
