@@ -5,6 +5,7 @@ services:
     container_name: qdebrid
     image: ghcr.io/sushydev/qdebrid:main
     restart: unless-stopped
+    network_mode: host
     volumes:
       - ./qdebrid.yml:/app/config.yml
       - scripts:/mnt/scripts
@@ -13,8 +14,7 @@ services:
     container_name: zurg
     image: ghcr.io/debridmediamanager/zurg-testing:latest
     restart: unless-stopped
-    ports:
-      - "${ZURG_PORT}:9999"
+    network_mode: host
     volumes:
       - ./zurg.yml:/app/config.yml
       - zurgdata:/app/data
@@ -29,15 +29,17 @@ services:
     container_name: plex
     image: ghcr.io/hotio/plex:latest
     restart: unless-stopped
-    ports:
-      - "${PLEX_PORT}:32400"
+    network_mode: host
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${PLEX_PORT}
     volumes:
       - ~/.config/mediaserver/plex/database:/config
       - ~/.config/mediaserver/plex/transcode:/transcode
       - ~/.config/mediaserver/radarr/media:/mnt/radarr
       - ~/.config/mediaserver/sonarr/media:/mnt/sonarr
+      - ~/.config/mediaserver/radarr_anime/media:/mnt/radarr_anime
+      - ~/.config/mediaserver/sonarr_anime/media:/mnt/sonarr_anime
       - zurg:/mnt/zurg
     healthcheck:
       test: curl --silent --show-error --fail http://localhost:32400/identity
@@ -50,10 +52,10 @@ services:
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr:latest
     restart: unless-stopped
-    ports:
-      - "${PROWLARR_PORT}:9696"
+    network_mode: host
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${PROWLARR_PORT}
     volumes:
       - ~/.config/mediaserver/prowlarr/config:/config
 
@@ -61,13 +63,13 @@ services:
     container_name: sonarr
     image: ghcr.io/hotio/sonarr:latest
     restart: unless-stopped
-    ports:
-      - "${SONARR_PORT}:8989"
+    network_mode: host
     depends_on:
       - plex
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${SONARR_PORT}
     volumes:
       - ~/.config/mediaserver/sonarr/config:/config
       - ~/.config/mediaserver/sonarr/media:/mnt/sonarr
@@ -78,16 +80,16 @@ services:
     container_name: sonarr_anime
     image: ghcr.io/hotio/sonarr:latest
     restart: unless-stopped
-    ports:
-      - "${SONARR_ANIME_PORT}:8989"
+    network_mode: host
     depends_on:
       - plex
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${SONARR_ANIME_PORT}
     volumes:
       - ~/.config/mediaserver/sonarr_anime/config:/config
-      - ~/.config/mediaserver/sonarr_anime/media:/mnt/sonarr
+      - ~/.config/mediaserver/sonarr_anime/media:/mnt/sonarr_anime
       - zurg:/mnt/zurg
       - scripts:/mnt/scripts
 
@@ -95,13 +97,13 @@ services:
     container_name: radarr
     image: ghcr.io/hotio/radarr:latest
     restart: unless-stopped
-    ports:
-      - "${RADARR_PORT}:7878"
+    network_mode: host
     depends_on:
       - plex
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${RADARR_PORT}
     volumes:
       - ~/.config/mediaserver/radarr/config:/config
       - ~/.config/mediaserver/radarr/media:/mnt/radarr
@@ -112,16 +114,16 @@ services:
     container_name: radarr_anime
     image: ghcr.io/hotio/radarr:latest
     restart: unless-stopped
-    ports:
-      - "${RADARR_ANIME_PORT}:7878"
+    network_mode: host
     depends_on:
       - plex
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${RADARR_ANIME_PORT}
     volumes:
-      - ~/.config/mediaserver/radarr/config:/config
-      - ~/.config/mediaserver/radarr/media:/mnt/radarr
+      - ~/.config/mediaserver/radarr_anime/config:/config
+      - ~/.config/mediaserver/radarr_anime/media:/mnt/radarr_anime
       - zurg:/mnt/zurg
       - scripts:/mnt/scripts
 
@@ -129,14 +131,14 @@ services:
     container_name: overseerr
     image: ghcr.io/hotio/overseerr:latest
     restart: unless-stopped
-    ports:
-      - "${OVERSEERR_PORT}:5055"
+    network_mode: host
     depends_on:
       - plex
       - sonarr
       - radarr
     environment:
       - TZ=Europe/Amsterdam
+      - PORT=${OVERSEERR_PORT}
     volumes:
       - ~/.config/mediaserver/overseerr/config:/app/config
 
