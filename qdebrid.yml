@@ -2,13 +2,5 @@ settings:
   real_debrid:
     token: "${REAL_DEBRID_TOKEN}"
 
-  sonarr:
-    host: "http://sonarr:8989"
-    token: "${SONARR_TOKEN}"
-
-  radarr:
-    host: "http://radarr:7878"
-    token: "${RADARR_TOKEN}"
-
   zurg:
     host: "http://zurg:9999"
