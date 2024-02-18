@@ -44,6 +44,8 @@ services:
       - ~/.config/mediaserver/radarr_anime/media:/mnt/radarr_anime
       - ~/.config/mediaserver/sonarr_anime/media:/mnt/sonarr_anime
       - zurg:/mnt/zurg
+    devices:
+      - /dev/dri:/dev/dri
     healthcheck:
       test: curl --silent --show-error --fail http://localhost:32400/identity
       interval: 1m00s
