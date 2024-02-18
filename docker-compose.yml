@@ -32,6 +32,9 @@ services:
     network_mode: host
     environment:
       - TZ=Europe/Amsterdam
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
       - PORT=${PLEX_PORT}
     volumes:
       - ~/.config/mediaserver/plex/database:/config
@@ -69,6 +72,9 @@ services:
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
       - PORT=${SONARR_PORT}
     volumes:
       - ~/.config/mediaserver/sonarr/config:/config
@@ -86,6 +92,9 @@ services:
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
       - PORT=${SONARR_ANIME_PORT}
     volumes:
       - ~/.config/mediaserver/sonarr_anime/config:/config
@@ -103,6 +112,9 @@ services:
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
       - PORT=${RADARR_PORT}
     volumes:
       - ~/.config/mediaserver/radarr/config:/config
@@ -120,6 +132,9 @@ services:
       - prowlarr
     environment:
       - TZ=Europe/Amsterdam
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
       - PORT=${RADARR_ANIME_PORT}
     volumes:
       - ~/.config/mediaserver/radarr_anime/config:/config
@@ -156,6 +171,7 @@ volumes:
       allow_other: "true"
       uid: "1000"
       gid: "1000"
+      umask: "002"
       vfs_cache_mode: "writes"
       vfs_read_chunk_size: "2G"
       dir_cache_time: "15s"
