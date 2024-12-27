@@ -1,9 +1,0 @@
-settings:
-  qdebrid:
-    port: ${QDEBRID_PORT}
-
-  real_debrid:
-    token: "${REAL_DEBRID_TOKEN}"
-
-  zurg:
-    host: "http://localhost:${ZURG_PORT}"

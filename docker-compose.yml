@@ -1,53 +1,96 @@
-version: '3'
-
 services:
   qdebrid:
     container_name: qdebrid
     image: ghcr.io/sushydev/qdebrid:main
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
+    depends_on:
+      - fuse_video_streamer
     volumes:
       - ./qdebrid.yml:/app/config.yml
-      - scripts:/mnt/scripts
-
-  zurg:
-    container_name: zurg
-    image: ghcr.io/debridmediamanager/zurg-testing:latest
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - ./zurg.yml:/app/config.yml
-      - zurgdata:/app/data
+      - ./fvs:/mnt/fvs
+      - ./logs/qdebrid:/app/logs
     healthcheck:
-      test: curl --silent --show-error --fail localhost:9999/dav/version.txt
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080 || exit 1"]
       interval: 1m00s
       timeout: 15s
       retries: 3
       start_period: 1m00s
 
+  debrid_drive:
+    container_name: debrid_drive
+    image: ghcr.io/sushydev/debrid_drive:main
+    restart: unless-stopped
+    network_mode: container:wgcf
+    volumes:
+      - ./debrid_drive.yml:/app/config.yml
+      - ./filesystem.db:/app/file_system.db
+      - ./real_debrid.db:/app/torrents.db
+      - ./logs/debrid_drive:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:6969 || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
+
+  fuse_video_streamer:
+    container_name: fuse_video_streamer
+    image: ghcr.io/sushydev/fuse_video_streamer:main
+    restart: unless-stopped
+    network_mode: container:wgcf
+    depends_on:
+      - debrid_drive
+    volumes:
+      - ./fuse_video_streamer.yml:/app/config.yml
+      - ./fvs:/mnt/fvs:rshared
+      - ./logs/fuse_video_streamer:/app/logs
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    devices:
+      - /dev/fuse:/dev/fuse:rwm
+    pid: host
+
   plex:
     container_name: plex
     image: ghcr.io/hotio/plex:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
+    depends_on:
+      - fuse_video_streamer
     environment:
-      - TZ=Europe/Amsterdam
+      - TZ=Europe/London
       - PUID=1000
       - PGID=1000
       - UMASK=002
-      - PORT=${PLEX_PORT}
+      - PORT=${PLEX_PORT:-32400}
     volumes:
       - ~/.config/mediaserver/plex/database:/config
       - ~/.config/mediaserver/plex/transcode:/transcode
-      - ~/.config/mediaserver/radarr/media:/mnt/radarr
-      - ~/.config/mediaserver/sonarr/media:/mnt/sonarr
-      - ~/.config/mediaserver/radarr_anime/media:/mnt/radarr_anime
-      - ~/.config/mediaserver/sonarr_anime/media:/mnt/sonarr_anime
-      - zurg:/mnt/zurg
+      - ./fvs:/mnt/fvs:rshared
     devices:
       - /dev/dri:/dev/dri
     healthcheck:
-      test: curl --silent --show-error --fail http://localhost:32400/identity
+      test: ["CMD-SHELL", "curl --silent --show-error --fail http://localhost:${PLEX_PORT:-32400}/identity"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
+
+  flaresolverr:
+    container_name: flaresolverr
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    network_mode: container:wgcf
+    environment:
+      - TZ=Europe/London
+      - PORT=${FLARESOLVERR_PORT:-8191}
+    volumes:
+      - ~/.config/mediaserver/flaresolverr/config:/config
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${FLARESOLVERR_PORT:-8191} || exit 1"]
       interval: 1m00s
       timeout: 15s
       retries: 3
@@ -57,124 +100,140 @@ services:
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
+    depends_on:
+      - flaresolverr
     environment:
-      - TZ=Europe/Amsterdam
-      - PORT=${PROWLARR_PORT}
+      - TZ=Europe/London
+      - PORT=${PROWLARR_PORT:-9696}
     volumes:
       - ~/.config/mediaserver/prowlarr/config:/config
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${PROWLARR_PORT:-9696} || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
 
   sonarr:
     container_name: sonarr
     image: ghcr.io/hotio/sonarr:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
     depends_on:
+      - qdebrid
       - plex
       - prowlarr
     environment:
-      - TZ=Europe/Amsterdam
+      - TZ=Europe/London
       - PUID=1000
       - PGID=1000
       - UMASK=002
-      - PORT=${SONARR_PORT}
+      - PORT=${SONARR_PORT:-8989}
     volumes:
       - ~/.config/mediaserver/sonarr/config:/config
-      - ~/.config/mediaserver/sonarr/media:/mnt/sonarr
-      - zurg:/mnt/zurg
-      - scripts:/mnt/scripts
+      - ./fvs:/mnt/fvs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${SONARR_PORT:-8989} || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
 
   sonarr_anime:
     container_name: sonarr_anime
     image: ghcr.io/hotio/sonarr:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
     depends_on:
+      - qdebrid
       - plex
       - prowlarr
     environment:
-      - TZ=Europe/Amsterdam
+      - TZ=Europe/London
       - PUID=1000
       - PGID=1000
       - UMASK=002
-      - PORT=${SONARR_ANIME_PORT}
+      - PORT=${SONARR_ANIME_PORT:-2323}
     volumes:
       - ~/.config/mediaserver/sonarr_anime/config:/config
-      - ~/.config/mediaserver/sonarr_anime/media:/mnt/sonarr_anime
-      - zurg:/mnt/zurg
-      - scripts:/mnt/scripts
+      - ./fvs:/mnt/fvs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${SONARR_ANIME_PORT:-2323} || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
 
   radarr:
     container_name: radarr
     image: ghcr.io/hotio/radarr:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
     depends_on:
+      - qdebrid
       - plex
       - prowlarr
     environment:
-      - TZ=Europe/Amsterdam
+      - TZ=Europe/London
       - PUID=1000
       - PGID=1000
       - UMASK=002
-      - PORT=${RADARR_PORT}
+      - PORT=${RADARR_PORT:-7878}
     volumes:
       - ~/.config/mediaserver/radarr/config:/config
-      - ~/.config/mediaserver/radarr/media:/mnt/radarr
-      - zurg:/mnt/zurg
-      - scripts:/mnt/scripts
+      - ./fvs:/mnt/fvs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${RADARR_PORT:-7878} || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
 
   radarr_anime:
     container_name: radarr_anime
     image: ghcr.io/hotio/radarr:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
     depends_on:
+      - qdebrid
       - plex
       - prowlarr
     environment:
-      - TZ=Europe/Amsterdam
+      - TZ=Europe/London
       - PUID=1000
       - PGID=1000
       - UMASK=002
-      - PORT=${RADARR_ANIME_PORT}
+      - PORT=${RADARR_ANIME_PORT:-1212}
     volumes:
       - ~/.config/mediaserver/radarr_anime/config:/config
-      - ~/.config/mediaserver/radarr_anime/media:/mnt/radarr_anime
-      - zurg:/mnt/zurg
-      - scripts:/mnt/scripts
+      - ./fvs:/mnt/fvs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${RADARR_ANIME_PORT:-1212} || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
 
   overseerr:
     container_name: overseerr
     image: ghcr.io/hotio/overseerr:latest
     restart: unless-stopped
-    network_mode: host
+    network_mode: container:wgcf
     depends_on:
       - plex
       - sonarr
+      - sonarr_anime
       - radarr
+      - radarr_anime
     environment:
-      - TZ=Europe/Amsterdam
-      - PORT=${OVERSEERR_PORT}
+      - TZ=Europe/London
+      - PORT=${OVERSEERR_PORT:-5055}
     volumes:
       - ~/.config/mediaserver/overseerr/config:/app/config
-
-volumes:
-  zurgdata:
-  scripts:
-  zurg:
-    driver: rclone
-    driver_opts:
-      type: "webdav"
-      webdav_url: "http://localhost:${ZURG_PORT}/dav"
-      webdav_vendor: "other"
-      webdav_pacer_min_sleep: "0"
-      allow_non_empty: "true"
-      allow_other: "true"
-      uid: "1000"
-      gid: "1000"
-      umask: "002"
-      vfs_cache_mode: "writes"
-      vfs_read_chunk_size: "2G"
-      dir_cache_time: "15s"
-      poll_interval: "10s"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:${OVERSEERR_PORT:-5055} || exit 1"]
+      interval: 1m00s
+      timeout: 15s
+      retries: 3
+      start_period: 1m00s
